@@ -1,0 +1,68 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: innovatech-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+    ports:
+      - "3306:3306"
+    volumes:
+      - dbdata:/var/lib/mysql
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ventas:
+    build:
+      context: .
+      dockerfile: Dockerfile-ventas
+    image: romannunezg/innovatech-ventas:latest
+    container_name: innovatech-ventas
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      DB_ENDPOINT: db
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backend-net
+
+  despachos:
+    build:
+      context: .
+      dockerfile: Dockerfile-despachos
+    image: romannunezg/innovatech-despachos:latest
+    container_name: innovatech-despachos
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      DB_ENDPOINT: db
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backend-net
+
+volumes:
+  dbdata:
+
+networks:
+  backend-net:
+    driver: bridge

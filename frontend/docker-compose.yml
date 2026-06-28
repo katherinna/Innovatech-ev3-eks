@@ -1,0 +1,22 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_VENTAS: ${VITE_API_VENTAS}
+        VITE_API_DESPACHOS: ${VITE_API_DESPACHOS}
+    image: romannunezg/innovatech-frontend:latest
+    container_name: innovatech-frontend
+    restart: always
+    ports:
+<<<<<<< HEAD
+      
+    - "80:80"
+=======
+      - "80:80"
+>>>>>>> c4bb59294f77698ba404460e3dc1f38be28638ef
+
+networks:
+  default:
+    driver: bridge
