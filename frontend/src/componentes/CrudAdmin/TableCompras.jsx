@@ -49,7 +49,6 @@ export const TableCompras = () => {
               </thead>
               <tbody>
                 {ventas
-                  .filter((venta) => !venta.despachoGenerado)
                   .map((venta) => (
                     <tr key={venta.idVenta}>
                       <td className="pr-10 py-10 items-center">
