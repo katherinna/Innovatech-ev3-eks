@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: innovatech-db
+  namespace: innovatech
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: innovatech-db
+  template:
+    metadata:
+      labels:
+        app: innovatech-db
+    spec:
+      containers:
+        - name: db
+          image: 545346716240.dkr.ecr.us-east-1.amazonaws.com/innovatech-db-ev3:eks-v1
+          ports:
+            - containerPort: 3306
+          envFrom:
+            - secretRef:
+                name: mysql-secret

@@ -14,6 +14,7 @@ ENV VITE_API_DESPACHOS=$VITE_API_DESPACHOS
 RUN npm run build
 
 #Servir con Nginx
-FROM nginx:1.19.0-alpine
+FROM nginx:alpine
 COPY --from=build /app/dist/ /usr/share/nginx/html
 EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
