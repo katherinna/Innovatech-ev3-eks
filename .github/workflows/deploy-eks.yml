@@ -13,6 +13,7 @@ jobs:
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
       EKS_CLUSTER_NAME: ${{ secrets.EKS_CLUSTER_NAME }}
       EKS_NAMESPACE: innovatech
+      IMAGE_TAG: ${{ github.sha }}
 
     steps:
       - name: Checkout repo
@@ -36,8 +37,8 @@ jobs:
             --build-arg VITE_API_VENTAS=http://a354eafa3b878472cab4cd41b3e90f50-721926953.us-east-1.elb.amazonaws.com:8080 \
             --build-arg VITE_API_DESPACHOS=http://a743325145c25492aae4ad1154b02477-1764506752.us-east-1.elb.amazonaws.com:8081 \
             -t innovatech-front-ev3 ./frontend
-          docker tag innovatech-front-ev3:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-front-ev3:github-v1
-          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-front-ev3:github-v1
+          docker tag innovatech-front-ev3:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-front-ev3:$IMAGE_TAG
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-front-ev3:$IMAGE_TAG
 
       - name: Build and push ventas
         run: |
@@ -64,7 +65,7 @@ jobs:
       - name: Deploy to EKS
         run: |
           kubectl apply -f k8s/
-          kubectl set image deployment/innovatech-frontend frontend=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-front-ev3:github-v1 -n $EKS_NAMESPACE
+                    kubectl set image deployment/innovatech-frontend frontend=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-front-ev3:$IMAGE_TAG -n $EKS_NAMESPACE
           kubectl set image deployment/innovatech-ventas ventas=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-back-ev3:ventas-github-v1 -n $EKS_NAMESPACE
           kubectl set image deployment/innovatech-despachos despachos=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-back-ev3:despachos-github-v1 -n $EKS_NAMESPACE
           kubectl rollout status deployment/innovatech-frontend -n $EKS_NAMESPACE
