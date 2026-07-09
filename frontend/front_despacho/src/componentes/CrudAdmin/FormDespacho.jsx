@@ -2,6 +2,8 @@ import { useForm } from "react-hook-form";
 import Swal from "sweetalert2";
 import axios from "axios";
 
+// intento 1
+
 export const FormDespacho = ({ venta, onClose }) => {
   const { register, handleSubmit } = useForm();
 
