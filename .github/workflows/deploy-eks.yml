@@ -2,7 +2,7 @@ name: Deploy Innovatech to EKS
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   build-push-deploy:
@@ -16,9 +16,11 @@ jobs:
       IMAGE_TAG: ${{ github.sha }}
 
     steps:
+      # 1. Descargar el código del repositorio
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      # 2. Conectarse a AWS usando GitHub Secrets
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -27,49 +29,113 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      # 3. Iniciar sesión en Amazon ECR
       - name: Login to Amazon ECR
         run: |
-          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-          
+          aws ecr get-login-password --region "$AWS_REGION" |
+          docker login \
+            --username AWS \
+            --password-stdin \
+            "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
+
+      # 4. Construir y publicar Frontend
+      # Se utiliza el SHA del commit como tag para asegurar trazabilidad
       - name: Build and push frontend
         run: |
-          docker build \
-          --build-arg VITE_API_VENTAS="" \
-          --build-arg VITE_API_DESPACHOS="" \
-          -t innovatech-front-evt ./frontend
+          FRONTEND_IMAGE="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-front-evt:$IMAGE_TAG"
 
-          docker tag innovatech-front-evt:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-front-evt:eks-v1
-          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-front-evt:eks-v1
-          
+          docker build \
+            --build-arg VITE_API_VENTAS="" \
+            --build-arg VITE_API_DESPACHOS="" \
+            -t "$FRONTEND_IMAGE" \
+            ./frontend
+
+          docker push "$FRONTEND_IMAGE"
+
+      # 5. Construir y publicar Backend Ventas
       - name: Build and push ventas
         run: |
-          docker build -t innovatech-ventas-evt ./backend/ventas
-          docker tag innovatech-ventas-evt:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-back-evt:ventas-github-v1
-          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-back-evt:ventas-github-v1
+          docker build \
+            -t innovatech-ventas-evt \
+            ./backend/ventas
 
+          docker tag \
+            innovatech-ventas-evt:latest \
+            "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-back-evt:ventas-github-v1"
+
+          docker push \
+            "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-back-evt:ventas-github-v1"
+
+      # 6. Construir y publicar Backend Despachos
       - name: Build and push despachos
         run: |
-          docker build -t innovatech-despachos-evt ./backend/despachos
-          docker tag innovatech-despachos-evt:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-back-evt:despachos-github-v1
-          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-back-evt:despachos-github-v1
+          docker build \
+            -t innovatech-despachos-evt \
+            ./backend/despachos
 
+          docker tag \
+            innovatech-despachos-evt:latest \
+            "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-back-evt:despachos-github-v1"
+
+          docker push \
+            "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-back-evt:despachos-github-v1"
+
+      # 7. Construir y publicar Base de Datos
       - name: Build and push database
         run: |
-          docker build -t innovatech-db-evt ./db
-          docker tag innovatech-db-evt:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-db-evt:github-v1
-          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-db-evt:github-v1
+          docker build \
+            -t innovatech-db-evt \
+            ./db
 
+          docker tag \
+            innovatech-db-evt:latest \
+            "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-db-evt:github-v1"
+
+          docker push \
+            "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-db-evt:github-v1"
+
+      # 8. Conectar kubectl con el clúster EKS
       - name: Update kubeconfig
         run: |
-          aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
+          aws eks update-kubeconfig \
+            --region "$AWS_REGION" \
+            --name "$EKS_CLUSTER_NAME"
 
+      # 9. Aplicar manifiestos y actualizar imágenes
       - name: Deploy to EKS
         run: |
           kubectl apply -f k8s/
-                    kubectl set image deployment/innovatech-frontend frontend=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-front-evt:$IMAGE_TAG -n $EKS_NAMESPACE
-          kubectl set image deployment/innovatech-ventas ventas=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-back-evt:ventas-github-v1 -n $EKS_NAMESPACE
-          kubectl set image deployment/innovatech-despachos despachos=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-back-evt:despachos-github-v1 -n $EKS_NAMESPACE
-          kubectl rollout status deployment/innovatech-frontend -n $EKS_NAMESPACE
-          kubectl rollout status deployment/innovatech-ventas -n $EKS_NAMESPACE
-          kubectl rollout status deployment/innovatech-despachos -n $EKS_NAMESPACE
-          kubectl get pods -n $EKS_NAMESPACE
+
+          kubectl set image deployment/innovatech-frontend \
+            frontend="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-front-evt:$IMAGE_TAG" \
+            -n "$EKS_NAMESPACE"
+
+          kubectl set image deployment/innovatech-ventas \
+            ventas="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-back-evt:ventas-github-v1" \
+            -n "$EKS_NAMESPACE"
+
+          kubectl set image deployment/innovatech-despachos \
+            despachos="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-back-evt:despachos-github-v1" \
+            -n "$EKS_NAMESPACE"
+
+          kubectl set image deployment/innovatech-db \
+            db="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-db-evt:github-v1" \
+            -n "$EKS_NAMESPACE"
+
+          kubectl rollout status deployment/innovatech-frontend \
+            -n "$EKS_NAMESPACE" \
+            --timeout=10m
+
+          kubectl rollout status deployment/innovatech-ventas \
+            -n "$EKS_NAMESPACE" \
+            --timeout=10m
+
+          kubectl rollout status deployment/innovatech-despachos \
+            -n "$EKS_NAMESPACE" \
+            --timeout=10m
+
+          kubectl rollout status deployment/innovatech-db \
+            -n "$EKS_NAMESPACE" \
+            --timeout=10m
+
+          kubectl get pods -n "$EKS_NAMESPACE"
