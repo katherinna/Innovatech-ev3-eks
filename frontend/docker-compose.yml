@@ -10,13 +10,7 @@ services:
     container_name: innovatech-frontend
     restart: always
     ports:
-<<<<<<< HEAD
-      
     - "80:80"
-=======
-      - "80:80"
->>>>>>> c4bb59294f77698ba404460e3dc1f38be28638ef
-
 networks:
   default:
     driver: bridge
