@@ -30,16 +30,17 @@ jobs:
       - name: Login to Amazon ECR
         run: |
           aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-
+          
       - name: Build and push frontend
         run: |
           docker build \
-            --build-arg VITE_API_VENTAS=http://a354eafa3b878472cab4cd41b3e90f50-721926953.us-east-1.elb.amazonaws.com:8080 \
-            --build-arg VITE_API_DESPACHOS=http://a743325145c25492aae4ad1154b02477-1764506752.us-east-1.elb.amazonaws.com:8081 \
-            -t innovatech-front-evt ./frontend
-          docker tag innovatech-front-evt:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-front-evt:$IMAGE_TAG
-          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-front-evt:$IMAGE_TAG
+          --build-arg VITE_API_VENTAS="" \
+          --build-arg VITE_API_DESPACHOS="" \
+          -t innovatech-front-evt ./frontend
 
+          docker tag innovatech-front-evt:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-front-evt:eks-v1
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/innovatech-front-evt:eks-v1
+          
       - name: Build and push ventas
         run: |
           docker build -t innovatech-ventas-evt ./backend/ventas
